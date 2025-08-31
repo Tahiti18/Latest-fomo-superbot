@@ -5,7 +5,7 @@ import pino from "pino";
 import crypto from "node:crypto";
 import { bot, webhook } from "./bot.js";
 import { initDb, migrate, setSubscription } from "./db.js";
-console.log("DB_ENV_PRESENT:", !!process.env.DATABASE_URL, (process.env.DATABASE_URL||"").replace(/:\/\/.*@/,"://****@"));
+
 const log = pino({ level: process.env.LOG_LEVEL || "info" });
 const app = express();
 
@@ -85,7 +85,17 @@ app.get("/", (_req, res) => res.send("FOMO Superbot API (max pack JS)"));
 async function main() {
   try {
     const pool = initDb();
-    if (pool) await migrate();
+
+    if (pool) {
+      log.info("Trying DB connection with pool...");
+      const client = await pool.connect();
+      log.info("DB connection successful");
+      client.release();
+
+      await migrate();
+      log.info("Migrations completed");
+    }
+
     log.info("DB ready");
   } catch (e) {
     log.warn({ e }, "DB init skipped");
