@@ -5,7 +5,7 @@ import pino from "pino";
 import crypto from "node:crypto";
 import { bot, webhook } from "./bot.js";
 import { initDb, migrate, setSubscription } from "./db.js";
-
+console.log("DB_ENV_PRESENT:", !!process.env.DATABASE_URL, (process.env.DATABASE_URL||"").replace(/:\/\/.*@/,"://****@"));
 const log = pino({ level: process.env.LOG_LEVEL || "info" });
 const app = express();
 
