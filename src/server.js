@@ -1,3 +1,4 @@
+// src/server.js
 import "dotenv/config";
 import express from "express";
 import pino from "pino";
@@ -8,17 +9,21 @@ import { initDb, migrate, setSubscription } from "./db.js";
 const log = pino({ level: process.env.LOG_LEVEL || "info" });
 const app = express();
 
-// Note: we need raw body for CryptoPay signature check; for telegram JSON we can use json().
+// Capture raw body (needed to verify CryptoPay HMAC). Parse JSON manually.
 app.use((req, res, next) => {
-  // capture raw body as string
   let data = "";
   req.setEncoding("utf8");
-  req.on("data", chunk => data += chunk);
+  req.on("data", (chunk) => (data += chunk));
   req.on("end", () => {
+    // @ts-ignore
     req.rawBody = data;
     try {
-      if (req.is("application/json") && data) req.body = JSON.parse(data);
-    } catch { /* ignore parse */ }
+      if (req.is && req.is("application/json") && data) {
+        req.body = JSON.parse(data);
+      }
+    } catch {
+      /* ignore parse */
+    }
     next();
   });
 });
@@ -29,14 +34,18 @@ app.get("/health", (_req, res) => res.type("text/plain").send("OK"));
 // Telegram webhook
 const secret = process.env.BOT_SECRET || "";
 const tgPath = secret ? `/tg/webhook/${secret}` : "/tg/webhook";
+log.info({ tgPath }, "Telegram webhook mounted");
 app.post(tgPath, (req, res, next) => webhook(req, res, next));
+// Optional GET to quickly confirm the route is live
+app.get(tgPath, (_req, res) => res.status(200).send("Telegram webhook OK"));
 
 // CryptoBot webhook (optional)
 app.post("/crypto/webhook", async (req, res) => {
   try {
     const token = process.env.CRYPTO_PAY_API_KEY || "";
-    if (!token) return res.status(200).end(); // silently ignore if not configured
+    if (!token) return res.status(200).end(); // ignore if not configured
 
+    // @ts-ignore
     const raw = req.rawBody || "";
     const got = String(req.header("Crypto-Pay-Api-Signature") || "").toLowerCase();
     const expected = crypto.createHmac("sha256", token).update(raw).digest("hex");
@@ -44,21 +53,24 @@ app.post("/crypto/webhook", async (req, res) => {
       log.warn("CryptoPay signature mismatch");
       return res.status(403).end();
     }
-    const inv = (req.body?.invoice || req.body?.result || req.body);
+
+    const inv = req.body?.invoice || req.body?.result || req.body;
     log.info({ status: inv?.status, id: inv?.invoice_id || inv?.id }, "CryptoPay webhook");
+
     if (inv?.status === "paid") {
-      // Parse payload (we put plan / user in there)
       try {
         const p = JSON.parse(inv.payload || "{}");
         const plan = String(p.plan || "pro").toLowerCase();
         const userId = Number(p.tg_user);
-        const expires = plan === "lifetime" ? null : new Date(Date.now() + 30*24*3600*1000).toISOString();
+        const expires =
+          plan === "lifetime" ? null : new Date(Date.now() + 30 * 24 * 3600 * 1000).toISOString();
         if (userId) await setSubscription(userId, plan, expires);
         log.info({ userId, plan }, "Premium granted");
       } catch (e) {
         log.error({ e }, "Payload parse error");
       }
     }
+
     return res.status(200).end();
   } catch (e) {
     log.error({ e }, "CryptoPay webhook error");
@@ -81,4 +93,7 @@ async function main() {
   const port = Number(process.env.PORT || 8080);
   app.listen(port, () => log.info(`Listening on ${port}`));
 }
-main().catch(e => { log.error(e); process.exit(1); });
+main().catch((e) => {
+  log.error(e);
+  process.exit(1);
+});
