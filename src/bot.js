@@ -27,9 +27,12 @@ bot.on("message", async (ctx, next) => {
 });
 
 // Core commands
-bot.command("start", async (ctx) => {
-  await ctx.reply(
-    "Welcome to FOMO Superbot 🚀\n\n" +
+bot.command("start", (ctx) => ui.open_member_menu(ctx));
+
+bot.command("menu", ui.open_member_menu);
+bot.command("help", (ctx) =>
+  ctx.reply(
+    "Commands:\n\n" +
     "• /menu → open menu\n" +
     "• /status → check account\n" +
     "• /price btc → get token price\n" +
@@ -37,13 +40,7 @@ bot.command("start", async (ctx) => {
     "• /buy pro USDT → upgrade\n" +
     "• /meme <prompt> → AI meme\n" +
     "• /tip /rain /raid → community fun"
-  );
-  return ui.open_member_menu(ctx);
-});
-
-bot.command("menu", ui.open_member_menu);
-bot.command("help", (ctx) =>
-  ctx.reply("Commands: /menu /status /price btc /scan <addr> /buy pro USDT /meme <prompt> /tip /rain /raid <msg>")
+  )
 );
 
 bot.command("status", account.status);
