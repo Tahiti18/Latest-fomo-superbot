@@ -2,7 +2,7 @@
 import { InlineKeyboard } from "grammy";
 
 /**
- * Two-column main menu. Written defensively to avoid runtime crashes.
+ * Two-column main menu with clear categories.
  */
 export async function open_member_menu(ctx) {
   try {
@@ -21,9 +21,10 @@ export async function open_member_menu(ctx) {
       ).row()
       .add(
         { text: "💎 Upgrade",           callback_data: "menu:upgrade"},
+        { text: "ℹ️ Help",              callback_data: "menu:help"   },
       );
 
-    await ctx.reply("Main menu:", { reply_markup: kb });
+    await ctx.reply("Choose an option:", { reply_markup: kb });
   } catch (err) {
     console.error("open_member_menu error:", err);
     await ctx.reply("Menu error. Try /menu again.");
@@ -31,7 +32,7 @@ export async function open_member_menu(ctx) {
 }
 
 /**
- * Handles taps on the menu buttons so nothing throws.
+ * Handles taps on the menu buttons.
  */
 export async function on_callback(ctx) {
   try {
@@ -42,17 +43,19 @@ export async function on_callback(ctx) {
       case "menu:safety":
         return ctx.reply("Safety tools: /scan, /honeypot");
       case "menu:price":
-        return ctx.reply("Market & Alpha: try /price btc | /price eth | /price ton");
+        return ctx.reply("Market & Alpha: /price btc | /price eth | /price ton");
       case "menu:memes":
-        return ctx.reply("Memes & Stickers: use /meme <prompt>");
+        return ctx.reply("Memes & Stickers: /meme <prompt>");
       case "menu:rewards":
-        return ctx.reply("Tips & Airdrops: use /tip, /rain");
+        return ctx.reply("Tips & Airdrops: /tip, /rain");
       case "menu:mktg":
-        return ctx.reply("Marketing & Raids: use /raid <message>");
+        return ctx.reply("Marketing & Raids: /raid <message>");
       case "menu:account":
         return ctx.reply("Account: /status, /buy");
       case "menu:upgrade":
         return ctx.reply("Upgrade: /buy pro USDT");
+      case "menu:help":
+        return ctx.reply("Help:\n\n/menu → main menu\n/status → account info\n/price btc → check price\n/meme <prompt> → make a meme\n/buy pro USDT → upgrade");
       default:
         return ctx.reply("Menu updated.");
     }
